@@ -1,6 +1,14 @@
-import pyspark #importing
+# Importing the library
+from pyspark import sparkcontext
+from pyspark.sql import SparkSession
+import pyspark.sql.types as tp
 
-sc = pyspark.sparkcontext()                                  # Instantiating sparkcontext
+# Instantiating sparkcontext and spark session
+spark = SparkSession.builder.getOrCreate()
+sc = sparkcontext()                                 
+sc = spark.sparkContext
+
+## RDD
 rdd_parallel = sc.parallelize(<your_list>)                   # Creating RDD through parallelize funciton
 rdd_external = sc.textFile("<file_path>", minPartitions=<n>) # Create rdd from external file
 paired_rdd = rdd_list.map(lambda x: (x[i], (x[j],x[k]....x[n]))) # Paired RDD creation
@@ -9,10 +17,10 @@ rdd_list.getNumPartitions()   # Check number of partitions
 rdd_list.glom().collect()     # Check data inside each partition
 
 #RDD Actions
-rdd_list.collect()  # collect all records and returns them as output
-rdd_list.take(n)    # take action will return the top n 
-rdd_list.count()    # count action used to find out the total data points in rdd_list
-paired_rdd.lookup("<key>")   #Lookup Action is used to search for the values of a particular Key. You need to pass the Key in the Look Up function to get the corresponding values.
+rdd_list.collect()  # Collect all records and returns them as output
+rdd_list.take(n)    # Take action will return the top n 
+rdd_list.count()    # Count action used to find out the total data points in rdd_list
+paired_rdd.lookup("<key>")   # Lookup Action is used to search for the values of a particular Key. You need to pass the Key in the Look Up function to get the corresponding values.
 paired_rdd.countByKey()      # CountByKey action will return the count of each key. Let's use it in the below cell to find out the number of students from each city.
 
 
@@ -25,12 +33,42 @@ union_rdd_list = rdd1_list.union(rdd2_list)                 # Union transformati
 intersection_rdd_list = rdd1_list.intersection(rdd2_list)   # Intersection transformation
 paired_list_keys = paired_rdd.keys()                        # keys transformation will give you the keys of the paired RDD
 paired_list_values = paired_rdd.values()                    # Values transformation will give you the values of the paired RDD 
-joined_data = paired_rdd1.join(paired_rdd2)                 # join transformation
+joined_data = paired_rdd1.join(paired_rdd2)                 # Join transformation
 
 group_rdd = paired_rdd.groupByKey()            # It receives key-value pairs (K, V) as an input, group the values based on key and generates a dataset of (K, Iterable) pairs as an output.
 group_rdd_map = group_rdd.mapValues(<aggr>)    # MapValues is applicable only for pair RDDs. As its name indicates, this transformation only operates on the values of the pair RDDs instead of operating on the whole tuple.
 reduced_rdd_list = rdd_list.reduceByKey(<EX: lambda x, y: x+y>) # ReduceByKey uses associative reduce function, where it merges value of each key. It can be used with Rdd only in key value pair.  It merges data locally using associative function for optimized data shuffling. 
 
 
+# Persist and storage levels
+rdd_filter_persist.persist()   # Data persistence
+rdd_filter_persist.unpersist() # Data unpersist    
+rdd_filter_persist.is_cached   # To check if the data frame is cached or not
+rdd_filter_persist.persist(pyspark.StorageLevel.<StorageLevel>)   # Setting up the persistance with required storage StorageLevel
 
-rdd_filter_list.persist()   # data persistence
+
+## DataFrame
+rdd_list_dataframe = rdd_list.toDF(<list_of_Column_names>) # Create dataframe from rdd
+dataframe_from_collections = spark.createDataFrame(data=<sample_data>,schema=<list_of_Column_names>)    # Create dataframe from collection
+<dataframe>.show()                                         # Display dataframe
+
+# Define schema or dataframe
+my_schema = tp.StructType([
+    tp.StructField(name= "<var1>", dataType= tp.IntegerType()),
+    tp.StructField(name= "<name1>", dataType= tp.StringType()),
+])
+#creating DataFrame from CSV
+df_csv_schema = spark.read.csv("<CSV file path>",header=False,schema=my_schema)  # Header=False if we don't have dedicated column names.
+df_csv_infer = spark.read.csv("<CSV file path", header=False, inferSchema=True) # Infering from data point to generate schema automatically once spark reads the whole Dataset.
+                                             
+# Rename columns 
+df_csv_infer2 = df_csv_infer.withColumnRenamed("_c0","<column1>")\              # when headers are mentioned before, later updation
+                            .withColumnRenamed("_c1","<column2>")\
+df_csv_infer2 = df_csv_infer.toDF(*<list_of_Column_names>)
+
+<DataFrame>.printSchema() # To print the schema                              
+<Datframe2> = <DataFrame>.drop("<Column_name>")               # Drop column                                      
+<Datframe2> = <DataFrame>.drop(*<list_of_Column_name>")       # Multiple columns Drop  
+<DataFrame>.columns                                           # Getting Column names
+
+<DataFrame>.where(<DataFrame>.<Columnname>==<Value>).show()    # Retrieve records where <column> is <val>
