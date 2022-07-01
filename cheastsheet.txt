@@ -1,0 +1,36 @@
+import pyspark #importing
+
+sc = pyspark.sparkcontext()                                  # Instantiating sparkcontext
+rdd_parallel = sc.parallelize(<your_list>)                   # Creating RDD through parallelize funciton
+rdd_external = sc.textFile("<file_path>", minPartitions=<n>) # Create rdd from external file
+paired_rdd = rdd_list.map(lambda x: (x[i], (x[j],x[k]....x[n]))) # Paired RDD creation
+
+rdd_list.getNumPartitions()   # Check number of partitions
+rdd_list.glom().collect()     # Check data inside each partition
+
+#RDD Actions
+rdd_list.collect()  # collect all records and returns them as output
+rdd_list.take(n)    # take action will return the top n 
+rdd_list.count()    # count action used to find out the total data points in rdd_list
+paired_rdd.lookup("<key>")   #Lookup Action is used to search for the values of a particular Key. You need to pass the Key in the Look Up function to get the corresponding values.
+paired_rdd.countByKey()      # CountByKey action will return the count of each key. Let's use it in the below cell to find out the number of students from each city.
+
+
+#RDD Transformation
+rdd_list.map(<operation>) # Maptransformation does the same operation(EX: lambda x: x.split(' ')) on each of the object. Map transformation is one to one.
+rdd_list.distinct()       # Distinct is used to find the unique elements in the RDD.
+rdd_list.filter(<condition>)    # Filter transformation only returns the elements which satisfies the given condition[EX: lambda x: x[i] == "<something>"]. 
+rdd_list.flatMap(<operation>)   # Flatmap function expresses a one-to-many transformation.
+union_rdd_list = rdd1_list.union(rdd2_list)                 # Union transformation
+intersection_rdd_list = rdd1_list.intersection(rdd2_list)   # Intersection transformation
+paired_list_keys = paired_rdd.keys()                        # keys transformation will give you the keys of the paired RDD
+paired_list_values = paired_rdd.values()                    # Values transformation will give you the values of the paired RDD 
+joined_data = paired_rdd1.join(paired_rdd2)                 # join transformation
+
+group_rdd = paired_rdd.groupByKey()            # It receives key-value pairs (K, V) as an input, group the values based on key and generates a dataset of (K, Iterable) pairs as an output.
+group_rdd_map = group_rdd.mapValues(<aggr>)    # MapValues is applicable only for pair RDDs. As its name indicates, this transformation only operates on the values of the pair RDDs instead of operating on the whole tuple.
+reduced_rdd_list = rdd_list.reduceByKey(<EX: lambda x, y: x+y>) # ReduceByKey uses associative reduce function, where it merges value of each key. It can be used with Rdd only in key value pair.  It merges data locally using associative function for optimized data shuffling. 
+
+
+
+rdd_filter_list.persist()   # data persistence
