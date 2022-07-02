@@ -1,7 +1,11 @@
-# Importing the library
+# Importing the libraries
 from pyspark import sparkcontext
 from pyspark.sql import SparkSession
-import pyspark.sql.types as tp
+import pyspark.sql.types as tp                 #For creating schema for dataFrames
+from pyspark.sql.functions import expr, when   #For creating new columns for dataFrames
+from pyspark.sql.functions import udf          #For creating new columns for dataFrames using UserDefinedFunction
+from pyspark.sql.functions import countDistinct, avg
+
 
 # Instantiating sparkcontext and spark session
 spark = SparkSession.builder.getOrCreate()
@@ -66,9 +70,30 @@ df_csv_infer2 = df_csv_infer.withColumnRenamed("_c0","<column1>")\              
                             .withColumnRenamed("_c1","<column2>")\
 df_csv_infer2 = df_csv_infer.toDF(*<list_of_Column_names>)
 
-<DataFrame>.printSchema() # To print the schema                              
+<DataFrame>.printSchema()                                     # To print the schema                              
 <Datframe2> = <DataFrame>.drop("<Column_name>")               # Drop column                                      
 <Datframe2> = <DataFrame>.drop(*<list_of_Column_name>")       # Multiple columns Drop  
 <DataFrame>.columns                                           # Getting Column names
 
-<DataFrame>.where(<DataFrame>.<Columnname>==<Value>).show()    # Retrieve records where <column> is <val>
+<DataFrame>.where(<DataFrame>.<Columnname>==<Value>).show()   # Retrieve records where <column> is <val>
+
+# New column addition
+column_value = expr("'<value>'")   # Define expression
+filter_expression = expr("IF(<column_name> = <value>, <value_to_be_inserted_if_true>, <value_to_be_inserted_if_false)")   # Creating a column based on the value of another column value.
+filter_condition = when(<DataFrame>["<Column_Name>"] == '<value>', <value_to_be_inserted_if_true>).otherwise(<value_to_be_inserted_if_false)
+filter_condition = when(<DataFrame>["<Column_Name1>"] == '<value1>', <value1_to_be_inserted_if_true>).when(<DataFrame>["<Column_Name2>"] == '<value2>', <value2_to_be_inserted_if_true>).otherwise(0)
+# for adding column through User Defined Function, Create the function and return the value to be inserted based on condition
+def <function_name>(<var1>, <var2>):
+function_with_udf = udf(f= <function_name>, returnType= tp.<FunctionReturnType EX: IntegerType>())
+updated_dataframe = <DataFrame>.withColumn("<New_Column_Name>", column_value/filter_expression/function_with_udf(<var1>,<var2>))   # Add new column to dataframe normally,based on condition or just using UserDefinedFunction
+
+#Manipulating DataFrames
+sorted_df = <DataFraame>.orderBy(["<ColumnName>"], ascending = False) # Sorting, by Default ascending = True in orderBy
+sorted_df_multiple = <DataFrame?.orderBy(["<ColumnName1>", "<ColumnName2>"], ascending = [True, False])
+grouped_data = <DataFrame>.groupBy("<ColumnName1>")
+grouped_data_average = <DataFrame>.agg(avg("<ColumnName2>"))
+grouped_data_unique = <DataFrame>.agg(countDistinct("<ColumnName2>").alias("<Alias_ColumnName>"))
+grouped_data_multiple_columns = <DataFrame>.agg(countDistinct("<ColumnName2>").alias("<Alias_ColumnName>"), avg("<ColumnName3>").alias("<Alias_ColumnName>"))
+inner_join_df = <DataFrame1>.join(<DataFrame2>, '<Common_Column_Name_on_which_joining')  # Joins
+right_outer_join_df = <DataFrame1>.join(<DataFrame2>, '<Common_Column_Name_on_which_joining', 'rightouter')
+                                                            
