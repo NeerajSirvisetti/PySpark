@@ -19,6 +19,7 @@ paired_rdd = rdd_list.map(lambda x: (x[i], (x[j],x[k]....x[n]))) # Paired RDD cr
 
 rdd_list.getNumPartitions()   # Check number of partitions
 rdd_list.glom().collect()     # Check data inside each partition
+rdd_list.toDebugString()         # Check lineage
 
 #RDD Actions
 rdd_list.collect()  # Collect all records and returns them as output
