@@ -70,7 +70,8 @@ df_csv_infer2 = df_csv_infer.withColumnRenamed("_c0","<column1>")\              
                             .withColumnRenamed("_c1","<column2>")\
 df_csv_infer2 = df_csv_infer.toDF(*<list_of_Column_names>)
 
-<DataFrame>.printSchema()                                     # To print the schema                              
+<DataFrame>.printSchema()                                     # To print the schema   
+<DataFrame>.select(<list_of_Column_names>).show()             # Select only certain columns to dispay                           
 <Datframe2> = <DataFrame>.drop("<Column_name>")               # Drop column                                      
 <Datframe2> = <DataFrame>.drop(*<list_of_Column_name>")       # Multiple columns Drop  
 <DataFrame>.columns                                           # Getting Column names
@@ -89,7 +90,7 @@ updated_dataframe = <DataFrame>.withColumn("<New_Column_Name>", column_value/fil
 
 #Manipulating DataFrames
 sorted_df = <DataFraame>.orderBy(["<ColumnName>"], ascending = False) # Sorting, by Default ascending = True in orderBy
-sorted_df_multiple = <DataFrame?.orderBy(["<ColumnName1>", "<ColumnName2>"], ascending = [True, False])
+sorted_df_multiple = <DataFrame>.orderBy(["<ColumnName1>", "<ColumnName2>"], ascending = [True, False])
 grouped_data = <DataFrame>.groupBy("<ColumnName1>")
 grouped_data_average = <DataFrame>.agg(avg("<ColumnName2>"))
 grouped_data_unique = <DataFrame>.agg(countDistinct("<ColumnName2>").alias("<Alias_ColumnName>"))
