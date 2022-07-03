@@ -50,3 +50,14 @@ spark.sql(
 df_pandas = pd.DataFrame(<DataFrame>.collect(), columns=<DataFrame>.schema.names)  # Collect results into a Pandas dataframe
 # get simple plot on the pandas data, import matplotlib
 df_pandas.plot(kind='barh', x='occupation', y='plus_50k');
+
+## Order of presedence Example
+SELECT city.city_name AS "City"
+FROM citizen
+JOIN city 
+ON citizen.city_id = city.city_id 
+WHERE city.city_name != 'San Bruno'
+GROUP BY city.city_name
+HAVING COUNT(*) >= 2
+ORDER BY city.city_name ASC
+LIMIT 2
