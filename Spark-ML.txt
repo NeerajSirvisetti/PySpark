@@ -23,3 +23,204 @@ test_data  = spark.read.csv("path>/test.csv", inferSchema=True, header=True)
 ## Data exploration
 
 train_data.printSchema() # data type of the columns
+
+# number of data points in each category and their percentage upto 4 decimal points
+target_variable = train_data.groupBy("<Target_Column>").agg(F.count("<Target_Column>").alias("count"),
+                                           F.round((F.count("<Target_Column>")/train_data.count())*100, 4).alias("percentage"))
+
+target_variable.show()
+
+# Type cast the target variable into Integer from Bool
+train_data = train_data.withColumn("<Target_Column>", F.col("<Target_Column>").cast(tp.IntegerType()))
+valid_data = valid_data.withColumn("<Target_Column>", F.col("<Target_Column>").cast(tp.IntegerType()))
+test_data = test_data.withColumn("<Target_Column>", F.col("<Target_Column>").cast(tp.IntegerType()))
+
+# null values in each column
+for c in train_data.columns:
+    # define the condition
+    missing_values = F.isnull(c)
+    
+    # filter the data with condition and count the number of data points
+    missing_values = train_data.filter(missing_values).count()
+    
+    # print the result
+    print(c, missing_values)
+
+# distinct values in each column
+train_data.agg(*(F.countDistinct(F.col(c)).alias(c) for c in train_data.columns)).show()
+
+# number of datapoints with each country
+top_countries = train_data.groupBy("Country").agg(F.count("Country").alias("country_count"))
+top_countries.show(10)
+top_countries.orderBy("country_count",ascending=False).show(25)
+
+# create list of top 20 countries, you can change the parameter in the limit function to choose any other number of countries
+top_20_countries = (top_countries.orderBy("country_count",ascending=False).limit(20).select("Country").collect())
+top_20_countries = [ row.Country for row in top_20_countries]
+print(top_20_countries)
+
+# define function to map countries
+def map_countries(x):
+    if x not in top_20_countries:
+        return "Others"
+    else:
+        return x
+
+# convert to udf function
+map_countries_udf = F.udf(f= map_countries, returnType= tp.StringType())
+
+# map the countries
+train_data = train_data.withColumn("country_modified", map_countries_udf(train_data["Country"]))
+valid_data = valid_data.withColumn("country_modified", map_countries_udf(valid_data["Country"]))
+test_data = test_data.withColumn("country_modified", map_countries_udf(test_data["Country"]))
+
+# number of data points with each country category
+top_20_countries = train_data.groupBy("country_modified").agg(F.count("country_modified"))
+top_20_countries.show()
+
+# bar plot of top countries
+top_20_countries_df = top_20_countries.toPandas()
+plt.figure(figsize=(15,5))
+plt.xticks(rotation=45)
+plt.title("Country-Wise Ads Distribution")
+plt.bar(top_20_countries_df["country_modified"], top_20_countries_df["count(country_modified)"]);
+
+
+# each browser count in the dataset 
+top_browser = train_data.groupBy("Browser").agg(F.count("Browser"))
+top_browser.orderBy("count(Browser)",ascending=False).show(30)
+
+# function to map the broswer
+def map_browser(x):
+    if x in ["android_webkit", "chrome", "46.0.2490.76", "chromium"]:
+        return "chrome"
+    
+    elif x in ["iphone", "safari"]:
+        return "safari"
+    
+    elif x in ["firefox_mobile", "firefox", "firefox_desktop"]:
+        return "firefox"
+    else:
+        return "others"
+
+map_browser_udf = F.udf(f = map_browser, returnType= tp.StringType())
+train_data = train_data.withColumn("browser_modified", map_browser_udf(train_data["Browser"]))
+
+## Bivariate
+# number of datapoints with each country
+top_countries_with_clicks = train_data.groupBy("country_modified").agg(F.count("country_modified").alias("country_count"),
+                                                                       F.sum("ConversionStatus").alias("number_of_clicks"))
+top_countries_with_clicks.show()
+
+
+## Preprocessing
+# Taking the amaysis done above into consideration, will be used now in imputing, replacing, and preprocessing steps.
+# importing some more libraries
+from pyspark.ml.feature import StringIndexer
+from pyspark.ml.feature import OneHotEncoder
+
+# label encode country
+SI_Country = StringIndexer(inputCol= "country_modified", outputCol= "country_le" , handleInvalid="skip")
+# label encode object country
+SI_Country_Obj = SI_Country.fit(train_data)
+# label encode country
+train_data_encoded = SI_Country_Obj.transform(train_data)
+
+#One Hot Encoding
+OHE_train = OneHotEncoder(inputCols=["country_le",
+                                              "browser_le",
+                                              "os_le",
+                                              "traffic_le"],
+                                  outputCols=["country_ohe",
+                                              "browser_ohe",
+                                              "os_ohe",
+                                              "traffic_ohe"])
+# OHE object
+OHE_Obj = OHE_train.fit(train_data_encoded)
+
+
+# Vector Assembler- Before passing the data into the ML model, we need to convert the required features into a Vector. We can do this using a `VectorAssembler.
+from pyspark.ml.feature import VectorAssembler
+# import the library
+
+# create feature vector
+feature_vector = VectorAssembler(inputCols= ['traffic_ohe',
+                                             'Fraud',
+                                             'total_p_id',
+                                             'total_c_id',
+                                             'country_ohe',
+                                             'device_modified',
+                                             'browser_ohe',
+                                             'os_ohe'],
+                                outputCol= 'feature_vector')
+
+# transform the feature vector
+train_data_encoded = feature_vector.transform(train_data_encoded)
+
+
+## Applying Logistinc regression
+# importing the libraries
+from pyspark.ml import classification
+from pyspark.ml.evaluation import BinaryClassificationEvaluator
+
+model_LR = classification.LogisticRegression(featuresCol='feature_vector', labelCol="ConversionStatus")
+
+model_LR = model_LR.fit(train_data_encoded)
+# Evaluate training data
+evaluator = BinaryClassificationEvaluator(labelCol="ConversionStatus", metricName="areaUnderROC") 
+evaluator.evaluate(model_LR.transform(train_data_encoded))
+
+## create object of DecisionTreeClassifier
+model_DTR = classification.DecisionTreeClassifier(featuresCol= "feature_vector",  labelCol="ConversionStatus")
+
+# fit the model
+model_DTR = model_DTR.fit(train_data_encoded)
+# evaluate the model
+evaluator.evaluate(model_DTR.transform(train_data_encoded))
+
+### Model Tuning
+# import the CrossValidator and ParamGridBuilder
+from pyspark.ml.tuning import CrossValidator, ParamGridBuilder
+# create the ParamGridBuilder
+params = ParamGridBuilder().build()
+# create the object of the Logistic Regression Model
+model_LR_CV = classification.LogisticRegression(featuresCol= "feature_vector",  labelCol="ConversionStatus")
+# create object of the cross validation model with numFolds = 3
+cv = CrossValidator(estimator=model_LR_CV,
+                    estimatorParamMaps=params,
+                    evaluator=evaluator,
+                    numFolds=3,
+                    seed=27)
+# fit the model
+cv_model = cv.fit(train_data_encoded)
+# evaluate the model
+evaluator = BinaryClassificationEvaluator(labelCol="ConversionStatus",metricName="areaUnderROC") 
+evaluator.evaluate(cv_model.transform(train_data_encoded)) 
+# Grid search
+updated_params = ParamGridBuilder() \
+                .addGrid(model_LR_CV.regParam, [0.01, 0.005, 0.0001]) \
+                .addGrid(model_LR_CV.elasticNetParam, [0.1, 0.001]) \
+                .build()
+# create object of the Cross Calidator with 3 folds
+cv = CrossValidator(estimator=model_LR_CV,
+                    estimatorParamMaps=updated_params,
+                    evaluator=evaluator,
+                    numFolds=3,
+                    seed=27)
+# fit the model
+grid_model = cv.fit(train_data_encoded)
+# evaluate the model
+evaluator = BinaryClassificationEvaluator(labelCol="ConversionStatus",metricName="areaUnderROC") 
+evaluator.evaluate(grid_model.transform(train_data_encoded))
+# evaluate model on validation data
+evaluator.evaluate(grid_model.transform(valid_data_encoded))
+# extract the best model parameters dictionary
+param_dict = grid_model.bestModel.extractParamMap()
+# created a filtered dictionary
+final_dict = {}
+for k, v in param_dict.items():
+    final_dict[k.name] = v
+# get the best elastic net parameter
+final_dict["elasticNetParam"]
+# get the best regularization parameter
+final_dict["regParam"]

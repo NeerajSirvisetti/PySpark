@@ -1,0 +1,71 @@
+Pipeline
+- It represents a sequence of steps to apply in an ML workflow. Example:
+ - Stage 1 : Split text into words.
+ - Stage 2 : Convert words into numeric data.
+ - Stage 3 : Apply machine learning model on the numeric data.
+- These steps are represented as `Transformers` or as `Estimators`.
+- A `Pipeline` is comprised of `Stages`.
+ - These stages are run in order.
+ - The input DataFrame is transformed as it passes through each stage.
+ - Each stage is either a `Transformer` or an `Estimator`.
+
+## Import the Required Libraries 
+from pyspark.ml import Pipeline
+from pyspark.ml.feature import OneHotEncoder, StringIndexer, VectorAssembler
+from pyspark.ml import Transformer
+from pyspark.ml.param.shared import HasInputCol, HasOutputCol, Param
+from pyspark.ml import classification
+
+# Create a sample dataframe
+sample_df = spark.createDataFrame([
+                                    (1, 'L101', 'R'),
+                                    (2, 'L201', 'C'),
+                                    (3, 'D111', 'R'),
+                                    (4, 'F210', 'R'),
+                                    (5, 'D110', 'C')
+                                ], 
+                                ['id', 'category_1', 'category_2'])
+
+# Define stage 1 : Label Encode category_1
+stage_1 = StringIndexer(inputCol= 'category_1', outputCol= 'category_1_index')
+
+# Define stage 2 : Label Encode category_2
+stage_2 = StringIndexer(inputCol= 'category_2', outputCol= 'category_2_index')
+
+# Define stage 3 : One-Hot Encode label encoded category_2
+stage_3 = OneHotEncoder(inputCols= ['category_2_index'], outputCols= ['category_2_OHE'])
+
+# Setup the pipeline object with the three stages
+pipeline = Pipeline(stages=[stage_1, stage_2, stage_3])
+
+# Fit the Pipeline model on the dataframe
+pipeline_model = pipeline.fit(sample_df)
+
+# Transform the dataframe
+sample_df_updated = pipeline_model.transform(sample_df)
+
+# Custom transformer class
+# Inherit Transformer, HasInputCol parent classes
+class customTransformer(Transformer, HasInputCol):
+  
+    # Class constructor
+    def __init__(self, inputCol= None, fill_with = None):
+        
+        # input columns
+        self.inputCol  = inputCol
+        
+        # null value replacements
+        self.fill_with = fill_with
+
+    
+    # Define custom transformer
+    def _transform(self, dataset):
+        
+        # Replace null values in the passed dataframe 
+        dataset = dataset.fillna({self.inputCol : self.fill_with})
+    
+        return dataset
+
+# Define custom trasnformer object
+s1 = customTransformer(inputCol= "category_2", 
+                       fill_with= "A")
