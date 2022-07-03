@@ -1,0 +1,52 @@
+# Import required libraries
+from pyspark.sql.types import StringType, IntegerType, StructType, StructField, DoubleType
+
+# Define schema, Example below
+finalSchema = StructType([StructField('age', DoubleType(),True),
+                              StructField('workclass',StringType(),True),
+                              StructField('fnlwgt', DoubleType(),True),
+                              StructField('education', StringType(), True),
+                              StructField('education_num', DoubleType(), True),
+                              StructField('marital_status', StringType(), True),
+                              StructField('occupation', StringType(), True),
+                              StructField('relationship', StringType(), True),
+                              StructField('race', StringType(), True),
+                              StructField('sex', StringType(), True),
+                              StructField('capital_gain', DoubleType(), True),
+                              StructField('capital_loss', DoubleType(), True),
+                              StructField('hours_per_week', DoubleType(), True),
+                              StructField('native_country', StringType(), True),
+                              StructField('income', StringType(), True)
+                             ])
+
+<datFrame> = spark.read.csv('<Path>',schema=finalSchema,header=True) # Creating dataframe from the data
+
+<DataFrame>.createOrReplaceTempView("<Name_of_the_View>")            # Create view for the dataframe
+
+spark.sql("show columns from <Name_of_the_View>").show()             # View columns
+
+spark.sql("select age, workclass, fnlwgt, education, income from <Name_of_the_View>") # View select columns
+
+df_mod = spark.sql('select *, <property EX: fnlwgt%1000> as <NEW_COLUMN> from <Name_of_the_View>') # Create new column
+
+#Sample Query
+spark.sql(
+  """
+  SELECT 
+    occupation,
+    SUM(1) as n,
+    ROUND(AVG(if(LTRIM(marital_status) LIKE 'Married-%',1,0)),2) as married_rate,
+    ROUND(AVG(if(lower(marital_status) LIKE '%widow%',1,0)),2) as widow_rate,
+    ROUND(AVG(if(LTRIM(marital_status) = 'Divorced',1,0)),2) as divorce_rate,
+    ROUND(AVG(if(LTRIM(marital_status) = 'Separated',1,0)),2) as separated_rate,
+    ROUND(AVG(if(LTRIM(marital_status) = 'Never-married',1,0)),2) as bachelor_rate
+  FROM 
+    census_mod 
+  GROUP BY 1
+  ORDER BY n DESC
+  """)
+
+# Convert Spark dataframe to Pandas dataframe
+df_pandas = pd.DataFrame(<DataFrame>.collect(), columns=<DataFrame>.schema.names)  # Collect results into a Pandas dataframe
+# get simple plot on the pandas data, import matplotlib
+df_pandas.plot(kind='barh', x='occupation', y='plus_50k');
