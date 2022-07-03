@@ -1,0 +1,25 @@
+# importing the required libraries
+from pyspark.sql import SparkSession
+import pyspark.sql.types as tp
+from pyspark.sql import functions as F
+
+# libraries to make plots
+import matplotlib.pyplot as plt
+%matplotlib inline
+
+# create spark session
+spark = SparkSession.builder.getOrCreate()
+
+# reading the train data  inferSchema=True use for small datasets
+train_data = spark.read.csv("<path>/train.csv",inferSchema=True, header=True)
+
+# reading the validation data
+valid_data = spark.read.csv("<path>/valid.csv",inferSchema=True, header=True)
+
+# reading the test data
+test_data  = spark.read.csv("path>/test.csv", inferSchema=True, header=True)
+
+
+## Data exploration
+
+train_data.printSchema() # data type of the columns
