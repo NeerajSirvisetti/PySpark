@@ -19,7 +19,11 @@ paired_rdd = rdd_list.map(lambda x: (x[i], (x[j],x[k]....x[n]))) # Paired RDD cr
 
 rdd_list.getNumPartitions()   # Check number of partitions
 rdd_list.glom().collect()     # Check data inside each partition
-rdd_list.toDebugString()         # Check lineage
+<DataFrame> = <DataFrame>.coalesce(n)                # Repartition of data through coalesce, reducing the partitions to n
+<DataFrame> = <DataFrame>.repartition(n)             # Repartition of data through repartition, using number n
+<DataFrame> = <DataFrame>.repartition(<ColumnName>)  # Repartition of data through repartition, using column name
+<DataFrame>.rdd.getNumPartitions()                   # To verify repartitions action done above
+rdd_list.toDebugString()      # Check lineage
 
 #RDD Actions
 rdd_list.collect()  # Collect all records and returns them as output
