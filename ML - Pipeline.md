@@ -1,4 +1,38 @@
-### `Define the stages of the Pipeline`
+
+----
+----
+
+
+# `Machine Learning Pipelines in Spark`
+
+----
+
+
+ *   `Transformer` 
+ > - It transforms the input data (X) in some ways.
+ > - Implements a method `transform()`, which converts one DataFrame into another, generally by appending one or more columns.
+ > - It includes `feature transformers` and `learned models`.
+ > > - `Feature transformer` should take a DataFrame, read a column (e.g., text), map it into a new column (e.g., feature vectors), and output a new DataFrame with the mapped column appended.
+ > > -  `Learning model` should take a DataFrame, read the column containing feature vectors, predict the label for each feature vector, and output a new DataFrame with predicted labels appended as a column.
+ *   `Estimator` 
+ > - It predicts a new value (or values) (y) by using the input data (X).
+ > - It implements a method `fit()`, which accepts a DataFrame and produces a `Model`, which is a `Transformer`.
+ > > - For example, a learning algorithm such as `LogisticRegression` is an `Estimator`, and calling `fit()` trains a `LogisticRegressionModel`, which is a `Model` and hence a `Transformer`.
+ * `Pipeline`
+ > - It represents a sequence of steps to apply in an ML workflow. Example:
+ > > - Stage 1 : Split text into words.
+ > > - Stage 2 : Convert words into numeric data.
+ > > - Stage 3 : Apply machine learning model on the numeric data.
+ > - These steps are represented as `Transformers` or as `Estimators`.
+ > - A `Pipeline` is comprised of `Stages`.
+ > > - These stages are run in order.
+ > > - The input DataFrame is transformed as it passes through each stage.
+ > > - Each stage is either a `Transformer` or an `Estimator`.
+ 
+ 
+ ---
+
+## `Define the stages of the Pipeline`
 
   * **STAGE 1**: [Transformer] Fill null values with in each column
   * **STAGE 2**: [Transformer] Reduce Category
@@ -11,7 +45,18 @@
   * **STAGE 9**: Transformer] Create Vector [ Traffic (LE), Fraud, Average_Click per Puplisher ID, Average Click per Campaign ID, Country (OHE), Browser (OHE), Device (OHE), OS (OHE)]
   * **STAGE 10**: [Estimator] Predict Labels Using the Logistic Regression
 
-'''python
+```python
+# Import the Required Libraries 
+from pyspark.ml import Pipeline
+from pyspark.ml.feature import OneHotEncoder, StringIndexer, VectorAssembler
+from pyspark.ml import Transformer
+from pyspark.ml.param.shared import HasInputCol, HasOutputCol, Param
+from pyspark.ml import classification
+
+```
+
+
+```python
 # custom transformer to fill null values
 
 class nullValuesTransformer(Transformer):
@@ -30,8 +75,8 @@ class nullValuesTransformer(Transformer):
         })
         
         return dataframe
-'''
-'''
+```
+```python
 # Creating custom Transformer to reduce the categories of multiple features
 class reduceCategories(Transformer):
     
@@ -53,7 +98,8 @@ class reduceCategories(Transformer):
         dataframe = dataframe.withColumn("os_modified", map_os_udf(dataframe["OS"]))
         
         return dataframe
-
+```
+```python
 # Creating two new features: total clicks per campaign Id, total clicks per publisher Id
 class frequencyEncoding(Transformer):
     
@@ -75,7 +121,8 @@ class frequencyEncoding(Transformer):
         })
         
         return dataframe
-
+```
+```python
 # Stage 1 - replace null values
 stage_1 = nullValuesTransformer()
 
@@ -94,7 +141,7 @@ stage_5 = StringIndexer(inputCol= "browser_modified", outputCol= "browser_le")
 # Stage 6 - label encode OS column
 stage_6 = StringIndexer(inputCol= "os_modified", outputCol= "os_le")
 
- # Stage 7 - One Hot Encode columns
+# Stage 7 - One Hot Encode columns
 stage_7 = OneHotEncoder(inputCols= ["country_le",  "browser_le", "os_le", "traffic_le"], 
                         outputCols= ["country_ohe",  "browser_ohe", "os_ohe", "traffic_ohe"])
 
@@ -115,7 +162,8 @@ stage_9 = VectorAssembler(inputCols= ["Fraud",
 
 # Stage 10 - Train ML model
 stage_10 = classification.LogisticRegression(featuresCol= "feature_vector", labelCol= "ConversionStatus")
-
+```
+```python
 # Define pipeline
 pipeline = Pipeline(stages= [stage_1,
                              stage_2,
@@ -130,7 +178,8 @@ pipeline = Pipeline(stages= [stage_1,
 
 # fit the pipeline with the training data
 pipeline_model = pipeline.fit(train_data_pipeline)
-
+```
+```python
 # transform data
 final_data = pipeline_model.transform(train_data_pipeline)
 
@@ -141,4 +190,4 @@ final_valid_data.columns
 
 final_valid_data.select("ID", "ConversionStatus", "rawPrediction", "probability", "prediction").show(10)
 
-'''
+```
